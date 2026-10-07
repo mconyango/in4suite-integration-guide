@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Integration guide for the In4Suite team: authentication, lead and opportunity endpoints, field rules, historical records, batch loading and sync-back.">
+<title>MiVida–In4Suite API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; }
+  :root {
+    --ground: #f6f7f5;
+    --surface: #ffffff;
+    --sunken: #eef1ee;
+    --ink: #18211e;
+    --muted: #57635e;
+    --rule: #d9dfdb;
+    --accent: #0d6b5b;
+    --accent-soft: #e1f0ec;
+    --code-bg: #f0f3f1;
+    --post: #9a5704;   --post-bg: #fbefdc;
+    --get: #1f55a3;    --get-bg: #e3ecfa;
+    --put: #6a47a6;    --put-bg: #eee7f8;
+    --warn: #8a5a00;   --warn-bg: #fdf3dc;   --warn-rule: #e9cf8f;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #111614; --surface: #171d1b; --sunken: #1d2422; --ink: #e2e9e6; --muted: #98a59f;
+      --rule: #2a3330; --accent: #5cc4ab; --accent-soft: #163029; --code-bg: #1b2220;
+      --post: #f0b45a; --post-bg: #3a2a12; --get: #8fb6f2; --get-bg: #172742; --put: #c3a6f0; --put-bg: #2a2140;
+      --warn: #f0c36a; --warn-bg: #2f2512; --warn-rule: #5e4a1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #111614; --surface: #171d1b; --sunken: #1d2422; --ink: #e2e9e6; --muted: #98a59f;
+    --rule: #2a3330; --accent: #5cc4ab; --accent-soft: #163029; --code-bg: #1b2220;
+    --post: #f0b45a; --post-bg: #3a2a12; --get: #8fb6f2; --get-bg: #172742; --put: #c3a6f0; --put-bg: #2a2140;
+    --warn: #f0c36a; --warn-bg: #2f2512; --warn-rule: #5e4a1f;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.6 var(--sans);
+    padding-inline: 16px;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  .shell {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px;
+    padding-block: 40px 80px;
+  }
+  @media (max-width: 860px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 24px 64px; } }
+
+  /* Table of contents */
+  nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13.5px; }
+  nav.toc .toc-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a { display: flex; gap: 8px; padding: 4px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+  nav.toc a::before { content: counter(toc); font: 12px/1.9 var(--mono); color: var(--muted); opacity: .6; min-width: 1.2em; }
+  nav.toc a:hover { background: var(--sunken); color: var(--ink); }
+  @media (max-width: 860px) {
+    nav.toc { position: static; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); padding: 12px 14px; }
+    nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  }
+
+  main { min-width: 0; max-width: 780px; }
+  header.intro { padding-bottom: 28px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(28px, 4.2vw, 38px); line-height: 1.15; font-weight: 700; letter-spacing: -.015em; margin: 8px 0 12px; text-wrap: balance; }
+  .lede { font-size: 17px; color: var(--muted); max-width: 62ch; margin: 0 0 18px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { padding-top: 40px; scroll-margin-top: 16px; }
+  h2 { font-size: 22px; font-weight: 600; line-height: 1.3; margin: 0 0 14px; text-wrap: balance; display: flex; align-items: baseline; gap: 12px; }
+  h2 .num { font: 500 14px var(--mono); color: var(--muted); }
+  h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; }
+  p, ul, ol { margin: 0 0 14px; max-width: 68ch; }
+  ul, ol { padding-left: 22px; }
+  li + li { margin-top: 4px; }
+  strong { font-weight: 600; }
+
+  code { font: 0.88em var(--mono); background: var(--code-bg); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+  td code, li code, p code { white-space: normal; overflow-wrap: anywhere; }
+
+  /* Code blocks */
+  .code { position: relative; margin: 0 0 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--code-bg); }
+  .code .code-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--rule); font: 11.5px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .code pre { margin: 0; padding: 14px; overflow-x: auto; font: 13px/1.6 var(--mono); color: var(--ink); tab-size: 2; }
+  .copy { font: 500 12px var(--sans); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  .copy:hover { color: var(--ink); background: var(--surface); }
+  .tok-k { color: var(--accent); }
+  .tok-c { color: var(--muted); font-style: italic; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sunken); white-space: nowrap; }
+  td:first-child { white-space: nowrap; }
+  .fields td:first-child code { font-weight: 500; }
+  .num-col { font-variant-numeric: tabular-nums; }
+
+  .chip { display: inline-block; font: 600 11px/1.7 var(--sans); letter-spacing: .04em; padding: 0 8px; border-radius: 999px; white-space: nowrap; }
+  .chip.req { background: var(--accent-soft); color: var(--accent); }
+  .chip.opt { background: var(--sunken); color: var(--muted); }
+  .chip.md  { background: var(--sunken); color: var(--ink); border: 1px solid var(--rule); }
+
+  .m { display: inline-block; min-width: 52px; text-align: center; font: 600 11.5px/1.8 var(--mono); padding: 0 7px; border-radius: 5px; }
+  .m.post { color: var(--post); background: var(--post-bg); }
+  .m.get  { color: var(--get);  background: var(--get-bg); }
+  .m.put  { color: var(--put);  background: var(--put-bg); }
+
+  /* Term map */
+  .termmap { display: grid; gap: 10px; margin: 6px 0 16px; }
+  .termrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.6fr); gap: 12px; align-items: center; }
+  .term { border: 1px solid var(--rule); background: var(--surface); border-radius: 10px; padding: 12px 14px; }
+  .term .sys { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .term .name { font-size: 17px; font-weight: 600; }
+  .term .key { font: 12.5px var(--mono); color: var(--muted); }
+  .term.mv { border-color: var(--accent); }
+  .arrow { color: var(--muted); font-size: 20px; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .flow .step { font-weight: 600; }
+  .flow .via { font-size: 12.5px; color: var(--muted); }
+  @media (max-width: 560px) { .termrow { grid-template-columns: minmax(0, 1fr); } .arrow { transform: rotate(90deg); justify-self: start; padding-left: 14px; } }
+
+  /* Callouts */
+  .note { border: 1px solid var(--warn-rule); background: var(--warn-bg); border-radius: 10px; padding: 12px 16px; margin: 0 0 16px; max-width: 68ch; }
+  .note p:last-child { margin-bottom: 0; }
+  .note .note-title { font-weight: 600; color: var(--warn); margin-bottom: 4px; }
+  .aside { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; color: var(--muted); max-width: 68ch; margin: 0 0 16px; }
+
+  /* Pipeline strip */
+  .pipeline { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-wrap: wrap; gap: 6px; max-width: none; counter-reset: stage; }
+  .pipeline li { margin: 0; counter-increment: stage; display: flex; align-items: center; gap: 6px; font: 12.5px var(--mono); background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px 3px 4px; }
+  .pipeline li::before { content: counter(stage); font: 600 11px/18px var(--sans); width: 18px; text-align: center; border-radius: 50%; background: var(--sunken); color: var(--muted); }
+
+  /* Load plan */
+  .steps { list-style: none; padding: 0; counter-reset: s; display: grid; gap: 10px; max-width: 68ch; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; margin: 0; }
+  .steps li::before { content: counter(s); font: 600 13px/26px var(--sans); text-align: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+
+  .checklist { list-style: none; padding: 0; display: grid; gap: 6px; }
+  .checklist li { display: flex; gap: 10px; align-items: flex-start; margin: 0; }
+  .checklist li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 4px; border: 1.5px solid var(--muted); border-radius: 4px; }
+
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#terms">Terminology</a></li>
+      <li><a href="#quickstart">Quick start</a></li>
+      <li><a href="#auth">Authentication</a></li>
+      <li><a href="#conventions">Conventions</a></li>
+      <li><a href="#endpoints">Endpoints</a></li>
+      <li><a href="#leads">Leads</a></li>
+      <li><a href="#opportunities">Opportunities</a></li>
+      <li><a href="#historical">Historical records</a></li>
+      <li><a href="#batches">Batches &amp; initial load</a></li>
+      <li><a href="#syncback">Sync-back</a></li>
+      <li><a href="#errors">Error messages</a></li>
+      <li><a href="#golive">Go-live checklist</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="intro">
+      <div class="eyebrow">Integration guide · v1.0 · October 2026</div>
+      <h1>MiVida ↔ In4Suite Integration API</h1>
+      <p class="lede">Everything the In4Suite team needs to push leads and opportunities into MiVida, keep them up to date, and receive changes back.</p>
+      <div class="meta">
+        <span><b>Base URL</b> <code>https://&lt;mivida-host&gt;/api</code></span>
+        <span><b>Format</b> JSON over HTTPS</span>
+        <span><b>Auth</b> OAuth2 client credentials</span>
+        <span><b>Interactive reference</b> <code>/api-doc</code> (staging), tag In4Suite</span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="terms">
+      <h2><span class="num">01</span>Terminology</h2>
+      <p>The two systems use the same words for different things. In this guide, “lead” and “opportunity” always mean <strong>In4Suite’s</strong> terms unless stated otherwise.</p>
+      <div class="termmap" role="list">
+        <div class="termrow" role="listitem">
+          <div class="term"><div class="sys">In4Suite</div><div class="name">Lead</div><div class="key">key: lead_id</div></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="term mv"><div class="sys">MiVida</div><div class="name">Customer</div><div class="key">a customer profile</div></div>
+        </div>
+        <div class="termrow" role="listitem">
+          <div class="term"><div class="sys">In4Suite</div><div class="name">Opportunity</div><div class="key">key: opportunity_id</div></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="term mv">
+            <div class="sys">MiVida</div>
+            <div class="flow"><span class="step name">Opportunity</span><span class="via">→ agent assigned →</span><span class="step name">Lead</span></div>
+            <div class="key">the MiVida lead is what agents work</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="quickstart">
+      <h2><span class="num">02</span>Quick start</h2>
+      <p>Three calls: get a token, push the customer, push their opportunity.</p>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><span class="tok-c"># 1. Get an access token (valid 24 hours)</span>
+curl -X POST https://&lt;mivida-host&gt;/api/auth/token \
+  -H 'Content-Type: application/json' \
+  -d '{"client_id": "&lt;your client id&gt;", "client_secret": "&lt;your client secret&gt;"}'
+<span class="tok-c"># → {"token": "eyJ0eXAiOiJKV1Qi..."}</span>
+
+<span class="tok-c"># 2. Push a lead (customer profile)</span>
+curl -X POST https://&lt;mivida-host&gt;/api/in4suite/leads \
+  -H 'Authorization: Bearer eyJ0eXAiOiJKV1Qi...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "lead_id": "LD-000123",
+        "customer_name": "Aisha Rahman",
+        "customer_phone": "+971501234567",
+        "customer_country_code": "AE",
+        "customer_email": "aisha.rahman@example.com",
+        "created_at": "2024-03-14T10:22:00+04:00"
+      }'
+
+<span class="tok-c"># 3. Push an opportunity for that lead</span>
+curl -X POST https://&lt;mivida-host&gt;/api/in4suite/opportunities \
+  -H 'Authorization: Bearer eyJ0eXAiOiJKV1Qi...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "opportunity_id": "OP-004567",
+        "lead_id": "LD-000123",
+        "customer_name": "Aisha Rahman",
+        "customer_phone": "+971501234567",
+        "customer_country_code": "AE",
+        "project_id": "RVH",
+        "area": "0192a1b2-55aa-7b31-8c12-44ab77cd1200",
+        "unit_type": "2br",
+        "budget": "1500000-1800000",
+        "source_category": "digital",
+        "source": "facebook",
+        "assigned_agent_id": "EMP0042",
+        "created_at": "2024-03-14T10:25:00+04:00"
+      }'</pre></div>
+    </section>
+
+    <!-- 3 -->
+    <section id="auth">
+      <h2><span class="num">03</span>Authentication</h2>
+      <p>MiVida uses the <strong>OAuth2 client-credentials</strong> grant. MiVida issues you a <code>client_id</code> and <code>client_secret</code> through a secure channel, never in plain-text email.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Step</th><th>Request</th></tr></thead>
+        <tbody>
+          <tr><td>Get a token</td><td><span class="m post">POST</span> <code>/api/auth/token</code> with <code>{"client_id": "...", "client_secret": "..."}</code></td></tr>
+          <tr><td>Use it</td><td>Header <code>Authorization: Bearer &lt;token&gt;</code> on every <code>/api/in4suite/*</code> call</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li>Tokens are valid for <strong>24 hours</strong>. Request a new one before expiry, or when a call returns <strong>401</strong>.</li>
+        <li>The <code>/api/in4suite/*</code> endpoints accept <strong>only</strong> tokens issued to the In4Suite client. Any other token, including a MiVida user’s login token, gets <strong>403</strong>.</li>
+        <li>Invalid credentials on <code>/auth/token</code> return <strong>403</strong> <code>Invalid client credentials.</code></li>
+      </ul>
+    </section>
+
+    <!-- 4 -->
+    <section id="conventions">
+      <h2><span class="num">04</span>Conventions</h2>
+
+      <h3>Your IDs are the keys</h3>
+      <p>Every record is addressed by <strong>your</strong> ID (<code>lead_id</code>, <code>opportunity_id</code>). You never need to store MiVida’s IDs, though responses include them (<code>mivida_customer_id</code>, <code>mivida_opportunity_id</code>, <code>mivida_lead_id</code>) for support conversations. IDs are strings of up to 64 characters and may contain anything except <code>/</code>.</p>
+
+      <h3>Create-or-update with POST is safe to retry</h3>
+      <p><span class="m post">POST</span> creates the record if MiVida doesn’t know the ID yet, and updates it if it does. Re-sending the same payload never creates duplicates, so retrying after a timeout or network error is always safe.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>result</th><th>HTTP</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>created</code></td><td class="num-col">201</td><td>New record created.</td></tr>
+          <tr><td><code>updated</code></td><td class="num-col">200</td><td>Existing record updated.</td></tr>
+          <tr><td><code>linked</code></td><td class="num-col">200</td><td><em>Leads only.</em> MiVida already had this customer (same email, else same phone) and linked it to your <code>lead_id</code> instead of creating a duplicate.</td></tr>
+        </tbody>
+      </table></div>
+      <p><span class="m put">PUT</span> and <span class="m put">PATCH</span> on <code>/…/{id}</code> only update. They return <strong>404</strong> if MiVida doesn’t know the ID.</p>
+
+      <h3>Partial updates</h3>
+      <p>On update, <strong>only the fields you send change</strong>. Fields you omit keep their current value.</p>
+      <ul>
+        <li>“Required” fields are required to <strong>create</strong>. On update you may omit them, but you can’t blank them: <code>""</code> or <code>null</code> gives <strong>422</strong>.</li>
+        <li><code>created_at</code> is used on create only and ignored on update.</li>
+        <li>Unknown fields are ignored, so extra fields won’t break a call.</li>
+      </ul>
+
+      <h3>Dates and times</h3>
+      <ul>
+        <li><strong>Send</strong> ISO 8601 with a UTC offset, e.g. <code>2024-03-14T10:22:00+04:00</code> or <code>2024-03-14T06:22:00Z</code>. A value without an offset is read in MiVida’s business timezone.</li>
+        <li><strong>Received</strong> timestamps are always UTC, e.g. <code>2024-03-14T06:22:00Z</code>.</li>
+        <li><code>created_at</code> may not be in the future. Five minutes of clock skew are tolerated.</li>
+      </ul>
+
+      <h3>Response shapes</h3>
+      <p><strong>Single write</strong> (POST, PUT, PATCH). <code>warnings</code> lists non-fatal notes. The record <strong>was</strong> saved (<a href="#agents">example</a>).</p>
+      <div class="code"><div class="code-head"><span>json</span><button class="copy" type="button">Copy</button></div><pre>{ "result": "created", "warnings": [], "data": { ...record... } }</pre></div>
+      <p><strong>Lookup</strong> (GET):</p>
+      <div class="code"><div class="code-head"><span>json</span><button class="copy" type="button">Copy</button></div><pre>{ "data": { ...record... } }</pre></div>
+      <p><strong>Validation failure</strong> (HTTP 422). Every problem is listed, by field name:</p>
+      <div class="code"><div class="code-head"><span>json</span><button class="copy" type="button">Copy</button></div><pre>{
+  "errors": [
+    { "field": "customer_country_code", "message": "customer_country_code \"ZZ\" is not a known ISO2 country code or dial code." },
+    { "field": "created_at", "message": "created_at cannot be in the future." }
+  ],
+  "code": 422
+}</pre></div>
+      <p><strong>Other errors</strong> (400, 401, 403, 404, 500):</p>
+      <div class="code"><div class="code-head"><span>json</span><button class="copy" type="button">Copy</button></div><pre>{ "errors": { "name": "Not Found", "message": "No record with lead_id \"LD-9\" exists in MiVida.", "status": 404 }, "code": 404 }</pre></div>
+
+      <h3>HTTP status summary</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Status</th><th>When</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td class="num-col">200 / 201</td><td>Success</td><td>—</td></tr>
+          <tr><td class="num-col">400</td><td>Body isn’t valid JSON or not the expected shape, or a batch has more than 100 items</td><td>Fix the request</td></tr>
+          <tr><td class="num-col">401</td><td>Missing, invalid or expired token</td><td>Get a new token and retry</td></tr>
+          <tr><td class="num-col">403</td><td>Token isn’t the In4Suite client’s</td><td>Use the In4Suite credentials</td></tr>
+          <tr><td class="num-col">404</td><td>GET, PUT or PATCH for an ID MiVida doesn’t know</td><td>Create it with POST</td></tr>
+          <tr><td class="num-col">422</td><td>Validation failed</td><td>Fix the listed fields; don’t retry unchanged</td></tr>
+          <tr><td class="num-col">5xx</td><td>MiVida-side failure</td><td>Retry with backoff; contact MiVida if it persists</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 5 -->
+    <section id="endpoints">
+      <h2><span class="num">05</span>Endpoints</h2>
+      <p>Base URL: <code>https://&lt;mivida-host&gt;/api</code></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><span class="m post">POST</span></td><td><code>/in4suite/leads</code></td><td>Create or update a lead</td></tr>
+          <tr><td><span class="m put">PUT</span> <span class="m put">PATCH</span></td><td><code>/in4suite/leads/{lead_id}</code></td><td>Update a lead</td></tr>
+          <tr><td><span class="m get">GET</span></td><td><code>/in4suite/leads/{lead_id}</code></td><td>Fetch a lead as MiVida holds it</td></tr>
+          <tr><td><span class="m post">POST</span></td><td><code>/in4suite/leads/batch</code></td><td>Create or update up to 100 leads</td></tr>
+          <tr><td><span class="m post">POST</span></td><td><code>/in4suite/opportunities</code></td><td>Create or update an opportunity</td></tr>
+          <tr><td><span class="m put">PUT</span> <span class="m put">PATCH</span></td><td><code>/in4suite/opportunities/{opportunity_id}</code></td><td>Update an opportunity</td></tr>
+          <tr><td><span class="m get">GET</span></td><td><code>/in4suite/opportunities/{opportunity_id}</code></td><td>Fetch an opportunity, with MiVida’s lead status and current agent</td></tr>
+          <tr><td><span class="m post">POST</span></td><td><code>/in4suite/opportunities/batch</code></td><td>Create or update up to 100 opportunities</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 6 -->
+    <section id="leads">
+      <h2><span class="num">06</span>Leads (customer profiles)</h2>
+      <h3>Fields</h3>
+      <div class="table-wrap"><table class="fields">
+        <thead><tr><th>Field</th><th>To create</th><th>Type / limit</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>lead_id</code></td><td><span class="chip req">required</span></td><td>string ≤ 64</td><td>Your Lead ID.</td></tr>
+          <tr><td><code>customer_name</code></td><td><span class="chip req">required</span></td><td>string ≤ 128</td><td></td></tr>
+          <tr><td><code>customer_phone</code></td><td><span class="chip req">required</span></td><td>string ≤ 15</td><td><strong>Unique across MiVida customers.</strong> Spaces, dashes, dots and brackets are removed; a leading <code>+</code> is kept.</td></tr>
+          <tr><td><code>customer_country_code</code></td><td><span class="chip req">required</span></td><td>string</td><td>ISO 3166-1 alpha-2 (<code>AE</code>) is <strong>preferred</strong>. Dial codes (<code>971</code>, <code>+971</code>, <code>00971</code>) are accepted too. Shared dial codes resolve to the main country (<code>1</code> → US, <code>7</code> → RU, <code>44</code> → GB, <code>61</code> → AU), so send ISO2 for the others.</td></tr>
+          <tr><td><code>customer_email</code></td><td><span class="chip req">required</span></td><td>email ≤ 128</td><td><strong>Unique across MiVida customers.</strong></td></tr>
+          <tr><td><code>created_at</code></td><td><span class="chip req">required</span></td><td>ISO 8601</td><td>Original creation time in In4Suite. Kept as the customer’s creation date.</td></tr>
+          <tr><td><code>salutation</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 30</td><td>e.g. <code>Mr</code>, <code>Ms</code>, <code>Dr</code></td></tr>
+          <tr><td><code>customer_category</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 128</td><td><span class="chip md">master data</span> customer category</td></tr>
+          <tr><td><code>customer_location</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 255</td><td>Free text</td></tr>
+          <tr><td><code>preferred_contact_method</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 128</td><td><span class="chip md">master data</span> contact method</td></tr>
+          <tr><td><code>preferred_contact_time</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 128</td><td><span class="chip md">master data</span> contact time</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Behaviour</h3>
+      <ul>
+        <li><strong>Matching existing customers.</strong> If MiVida doesn’t know your <code>lead_id</code> yet but already has a customer with the same <strong>email</strong> (checked first) or <strong>phone</strong>, that customer is linked to your <code>lead_id</code> (<code>result: "linked"</code>) and updated with your fields. No duplicate is created.</li>
+        <li><strong>Conflict.</strong> If that email or phone belongs to a customer already linked to a <em>different</em> <code>lead_id</code>, you get <strong>422</strong> naming the other lead. Two In4Suite leads can’t share an email or phone in MiVida.</li>
+        <li><strong>Copies stay in sync.</strong> MiVida keeps a copy of the customer’s name, phone, email and country on each of their opportunities and leads. Updating the lead updates those copies too.</li>
+      </ul>
+
+      <h3>Example: update one field</h3>
+      <div class="code"><div class="code-head"><span>http</span><button class="copy" type="button">Copy</button></div><pre><span class="tok-k">PATCH</span> /api/in4suite/leads/LD-000123
+Content-Type: application/json
+
+{ "customer_phone": "+971509999999" }</pre></div>
+      <div class="code"><div class="code-head"><span>response · 200</span><button class="copy" type="button">Copy</button></div><pre>{
+  "result": "updated",
+  "warnings": [],
+  "data": {
+    "lead_id": "LD-000123",
+    "mivida_customer_id": "0192a1b2-7c44-7e9a-bf21-2b1c9d4e5f60",
+    "customer_name": "Aisha Rahman",
+    "customer_phone": "+971509999999",
+    "customer_country_code": "AE",
+    "customer_email": "aisha.rahman@example.com",
+    "salutation": null,
+    "customer_category": null,
+    "customer_location": null,
+    "preferred_contact_method": null,
+    "preferred_contact_time": null,
+    "created_at": "2024-03-14T06:22:00Z",
+    "updated_at": "2026-10-07T08:15:31Z"
+  }
+}</pre></div>
+    </section>
+
+    <!-- 7 -->
+    <section id="opportunities">
+      <h2><span class="num">07</span>Opportunities</h2>
+      <h3>Fields</h3>
+      <p>Fields marked <span class="chip md">master data</span> take values from the <strong>MiVida Master Data sheet</strong>. The customer’s email isn’t sent with the opportunity; MiVida takes it from the lead.</p>
+      <div class="table-wrap"><table class="fields">
+        <thead><tr><th>Field</th><th>To create</th><th>Type / limit</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>opportunity_id</code></td><td><span class="chip req">required</span></td><td>string ≤ 64</td><td>Your Opportunity ID.</td></tr>
+          <tr><td><code>lead_id</code></td><td><span class="chip req">required</span></td><td>string ≤ 64</td><td>The customer’s <code>lead_id</code>. <strong>Push that lead first.</strong> Can’t be changed after the opportunity is created.</td></tr>
+          <tr><td><code>customer_name</code></td><td><span class="chip req">required</span></td><td>string ≤ 128</td><td></td></tr>
+          <tr><td><code>customer_phone</code></td><td><span class="chip req">required</span></td><td>string ≤ 15</td><td></td></tr>
+          <tr><td><code>customer_country_code</code></td><td><span class="chip req">required</span></td><td>string</td><td>Same rules as for leads.</td></tr>
+          <tr><td><code>project_id</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> project code (e.g. <code>RVH</code>). The MiVida project id is accepted too.</td></tr>
+          <tr><td><code>source_category</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> source category value (or label).</td></tr>
+          <tr><td><code>unit_type</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> unit type value, e.g. <code>2br</code> (or the label <code>2 Bedroom</code>).</td></tr>
+          <tr><td><code>created_at</code></td><td><span class="chip req">required</span></td><td>ISO 8601</td><td>Original creation time in In4Suite. Decides whether the record is <a href="#historical">historical</a>.</td></tr>
+          <tr><td><code>area</code></td><td><span class="chip opt">optional</span></td><td>string (id)</td><td><span class="chip md">master data</span> MiVida <strong>unit size id</strong>. Must belong to <code>project_id</code>. MiVida fills in the phase, block and unit type from it.</td></tr>
+          <tr><td><code>source</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span> source value or label. Must belong to <code>source_category</code>.</td></tr>
+          <tr><td><code>budget</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 40</td><td>One amount (<code>1500000</code>) or a range (<code>1500000-1800000</code>).</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><strong>Employee code</strong> of the agent. See <a href="#agents">agent assignment</a>.</td></tr>
+          <tr><td><code>customer_category</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
+          <tr><td><code>customer_location</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 255</td><td>Free text</td></tr>
+          <tr><td><code>buying_horizon</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
+          <tr><td><code>preferred_contact_method</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
+          <tr><td><code>preferred_contact_time</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
+          <tr><td><code>remarks</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 255</td><td>Note for the assigning manager</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="agents">Agent assignment</h3>
+      <p>Agents are identified by <strong>employee code</strong>, which is the same in both systems.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Situation</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr><td>Code matches an employee with a MiVida user account</td><td>Assigned. MiVida creates its lead for that agent.</td></tr>
+          <tr><td>Code matches an employee <strong>without</strong> a user account</td><td>Saved <strong>unassigned</strong>, with your code kept. <code>warnings</code> says so. Status 201/200, not an error. A MiVida admin can assign it once the account exists.</td></tr>
+          <tr><td>Code not found in MiVida</td><td><strong>422</strong> on <code>assigned_agent_id</code></td></tr>
+          <tr><td>Not sent, <strong>live</strong> record</td><td>MiVida assigns automatically, round-robin among the project cluster’s agents</td></tr>
+          <tr><td>Not sent, <strong>historical</strong> record</td><td>Left unassigned</td></tr>
+          <tr><td>Update with a different code</td><td>MiVida’s lead is <strong>reassigned</strong>: recorded in its history, and the new agent is notified (not for historical records).</td></tr>
+          <tr><td>Update with an empty value</td><td>Ignored. Agents can’t be removed through the API.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="code"><div class="code-head"><span>response · 201 with a warning</span><button class="copy" type="button">Copy</button></div><pre>{
+  "result": "created",
+  "warnings": ["Employee Aq0222 has no MiVida user account; the opportunity is left unassigned. It can be assigned once the account exists."],
+  "data": { "opportunity_id": "OP-004568", "status": "unassigned", "is_agent_assigned": false, "assigned_agent_id": "Aq0222", "...": "..." }
+}</pre></div>
+
+      <h3>Response fields</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>opportunity_id</code>, <code>lead_id</code></td><td>Your IDs</td></tr>
+          <tr><td><code>mivida_opportunity_id</code></td><td>MiVida’s opportunity id</td></tr>
+          <tr><td><code>mivida_lead_id</code></td><td>MiVida’s lead id once an agent is assigned; <code>null</code> before</td></tr>
+          <tr><td><code>status</code></td><td><code>unassigned</code> or <code>assigned</code></td></tr>
+          <tr><td><code>lead_status</code></td><td>Stage in MiVida’s sales pipeline (e.g. <code>opportunity</code>, <code>site_visited</code>, <code>booked</code>, <code>sold</code>); <code>null</code> while unassigned</td></tr>
+          <tr><td><code>is_historical</code></td><td>Whether MiVida archived it on arrival</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td>Employee code of the current agent, or the code you sent if that employee has no MiVida account</td></tr>
+          <tr><td><code>is_agent_assigned</code></td><td>Whether a MiVida agent actually holds it</td></tr>
+          <tr><td><code>project_id</code>, <code>project_code</code>, <code>area</code></td><td>MiVida project id, project code and unit size id</td></tr>
+          <tr><td>other fields</td><td>As sent, after normalization</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Rules to know</h3>
+      <ul>
+        <li><strong>One customer, many opportunities.</strong> A lead may have any number of opportunities. MiVida doesn’t treat them as duplicates.</li>
+        <li><strong>Changing <code>project_id</code> without <code>area</code></strong> is rejected if the stored area belongs to the old project. Send the new project’s <code>area</code> with it.</li>
+        <li><strong>An opportunity deleted in MiVida</strong> can’t be re-created with the same <code>opportunity_id</code> (422). Contact MiVida if this happens.</li>
+      </ul>
+    </section>
+
+    <!-- 8 -->
+    <section id="historical">
+      <h2><span class="num">08</span>Historical records</h2>
+      <p>An opportunity whose <code>created_at</code> falls <strong>before today</strong>, in MiVida’s business timezone, is <strong>historical</strong>. MiVida decides this once, when the record is created; updates never change it.</p>
+      <p>Historical records:</p>
+      <ul>
+        <li>keep their <strong>original dates</strong> (created, assigned, stage), so reports place them in the right period;</li>
+        <li>are <strong>archived</strong>: kept out of agents’ work lists, dashboards, funnel reports, automatic lead scoring and reminders;</li>
+        <li>trigger <strong>no notifications</strong> to agents or customers, and are <strong>not synced back</strong> to In4Suite;</li>
+        <li>are <strong>never auto-assigned</strong>;</li>
+        <li>stay searchable in MiVida (filter “Historical: Yes”). A MiVida admin can un-archive one, for example when the customer comes back.</li>
+      </ul>
+      <div class="note">
+        <div class="note-title">Late live pushes are archived too</div>
+        <p>An opportunity created yesterday but delivered today, say after an outage, counts as historical. Deliver live opportunities on the day they’re created. A MiVida admin can un-archive any that arrive late.</p>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section id="batches">
+      <h2><span class="num">09</span>Batches and the initial load</h2>
+      <h3>Batch endpoints</h3>
+      <div class="code"><div class="code-head"><span>http</span><button class="copy" type="button">Copy</button></div><pre><span class="tok-k">POST</span> /api/in4suite/opportunities/batch
+Content-Type: application/json
+
+{ "items": [ { ...opportunity... }, { ...opportunity... } ] }</pre></div>
+      <ul>
+        <li>Up to <strong>100 items</strong> per request. More returns <strong>400</strong>.</li>
+        <li>Each item has the same fields as the single endpoint and is <strong>created or updated independently</strong>. A failing item doesn’t affect the others.</li>
+        <li>The response is <strong>200</strong> whenever the body is well formed. Check each item’s <code>result</code>. <code>index</code> is the item’s position in your <code>items</code> array.</li>
+      </ul>
+      <div class="code"><div class="code-head"><span>response · 200</span><button class="copy" type="button">Copy</button></div><pre>{
+  "summary": { "total": 2, "created": 0, "updated": 1, "linked": 0, "failed": 1 },
+  "results": [
+    { "index": 0, "opportunity_id": "OP-1", "result": "updated", "warnings": [],
+      "mivida_opportunity_id": "...", "mivida_lead_id": "...", "is_historical": true },
+    { "index": 1, "opportunity_id": "OP-3", "result": "failed",
+      "errors": [ { "field": "lead_id", "message": "In4Suite lead \"LD-404\" has not been pushed to MiVida yet. Push the lead first, then retry this opportunity." } ] }
+  ]
+}</pre></div>
+
+      <h3>Loading about 200,000 historical records</h3>
+      <ol class="steps">
+        <li><span><strong>All leads first</strong>, through <code>POST /in4suite/leads/batch</code>. An opportunity is rejected if its lead hasn’t arrived yet.</span></li>
+        <li><span><strong>Then all opportunities</strong>, through <code>POST /in4suite/opportunities/batch</code>.</span></li>
+        <li><span>Send <strong>100 items per request</strong>, with <strong>at most 4 requests in parallel</strong>.</span></li>
+        <li><span>Collect the <code>failed</code> items, fix them and re-send only those. Re-sending items that already succeeded is harmless.</span></li>
+        <li><span>A failure reading <em>“This record was being written by another request at the same time”</em> means two parallel requests raced for the same ID. Retry it.</span></li>
+        <li><span>Start with a <strong>dry run on MiVida’s staging environment</strong> using a few thousand records, to check the master-data mapping and throughput.</span></li>
+      </ol>
+      <p>After the initial load, push changes as they happen through the single endpoints or batches.</p>
+    </section>
+
+    <!-- 10 -->
+    <section id="syncback">
+      <h2><span class="num">10</span>Changes sent back to In4Suite</h2>
+      <p>MiVida notifies In4Suite when a MiVida user changes a record that came from In4Suite. Changes In4Suite sent itself are <strong>not</strong> echoed back, and historical records aren’t synced.</p>
+      <div class="note">
+        <div class="note-title">We need your input</div>
+        <p>MiVida needs the URL and credentials of the In4Suite endpoint that will receive these events. Sync-back stays switched off until then. The format below is MiVida’s proposal; if In4Suite already has an inbound API, send us its specification and we’ll adapt.</p>
+      </div>
+
+      <h3>Delivery</h3>
+      <ul>
+        <li><span class="m post">POST</span> <code>&lt;your URL&gt;</code> with a JSON body.</li>
+        <li>Headers: <code>Content-Type: application/json</code>, <code>Authorization: Bearer &lt;token you give us&gt;</code>, <code>Idempotency-Key: &lt;event_id&gt;</code>.</li>
+        <li>Any <strong>2xx</strong> response counts as delivered. Anything else, or a 15-second timeout, is retried up to <strong>8 times</strong>, about a minute apart.</li>
+        <li>Delivery is <strong>at-least-once</strong>: use <code>event_id</code> to discard duplicates. Order isn’t guaranteed; compare <code>occurred_at</code> if order matters.</li>
+      </ul>
+
+      <h3>Envelope</h3>
+      <div class="code"><div class="code-head"><span>json</span><button class="copy" type="button">Copy</button></div><pre>{
+  "event_id": "0192a1c0-1d2e-7f30-8a41-5b6c7d8e9f00",
+  "event": "opportunity.assigned",
+  "occurred_at": "2026-10-07T08:15:31Z",
+  "data": { ... }
+}</pre></div>
+
+      <h3>Events</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>event</th><th>Sent when</th><th>data</th></tr></thead>
+        <tbody>
+          <tr><td><code>opportunity.assigned</code></td><td>A MiVida user assigns or reassigns the opportunity’s agent</td><td><code>opportunity_id</code>, <code>assigned_agent_id</code> (employee code), <code>assigned_at</code></td></tr>
+          <tr><td><code>opportunity.status_changed</code></td><td>The MiVida lead moves along the pipeline</td><td><code>opportunity_id</code>, <code>status</code>, <code>status_label</code>, <code>status_remarks</code>, <code>status_updated_at</code></td></tr>
+          <tr><td><code>lead.updated</code></td><td>A MiVida user changes the customer’s contact details</td><td><code>lead_id</code> plus only the changed fields among <code>customer_name</code>, <code>customer_phone</code>, <code>customer_email</code>, <code>customer_country_code</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>MiVida pipeline statuses, in order</h3>
+      <ol class="pipeline">
+        <li>opportunity</li><li>site_visited</li><li>booked</li><li>sold</li><li>loo_executed</li><li>min_deposit_paid</li><li>afl_requested</li><li>afl_issued</li><li>afl_executed</li>
+      </ol>
+      <p class="aside">LOO is the Letter of Offer; AFL is the Agreement for Lease.</p>
+    </section>
+
+    <!-- 11 -->
+    <section id="errors">
+      <h2><span class="num">11</span>Error messages</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Message (abridged)</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>any required field</td><td><code>&lt;field&gt; cannot be blank.</code></td><td>Send a value</td></tr>
+          <tr><td><code>customer_email</code></td><td><code>customer_email is not a valid email address.</code></td><td></td></tr>
+          <tr><td><code>customer_email</code> / <code>customer_phone</code></td><td><code>Email already exists.</code> / <code>Phone already exists.</code></td><td>Another MiVida customer holds it</td></tr>
+          <tr><td><code>customer_email</code> / <code>customer_phone</code></td><td><code>… already belongs to In4Suite lead "X".</code></td><td>Two of your leads share this value</td></tr>
+          <tr><td><code>customer_country_code</code></td><td><code>… is not a known ISO2 country code or dial code.</code></td><td>Use ISO2</td></tr>
+          <tr><td><code>created_at</code></td><td><code>… must be an ISO 8601 date-time …</code> / <code>… cannot be in the future.</code></td><td></td></tr>
+          <tr><td><code>lead_id</code></td><td><code>In4Suite lead "X" has not been pushed to MiVida yet …</code></td><td>Push the lead, then retry</td></tr>
+          <tr><td><code>lead_id</code></td><td><code>An opportunity cannot be moved to another lead …</code></td><td>Not supported</td></tr>
+          <tr><td><code>project_id</code></td><td><code>… does not match any MiVida project id or code.</code></td><td>Check the master data sheet</td></tr>
+          <tr><td><code>area</code></td><td><code>… does not match any MiVida unit size id.</code> / <code>… belongs to a different project …</code></td><td>Check the master data sheet</td></tr>
+          <tr><td><code>unit_type</code> / <code>source_category</code> / <code>source</code></td><td><code>… is not a MiVida unit type / source category / source.</code></td><td>Check the master data sheet</td></tr>
+          <tr><td><code>source</code></td><td><code>… does not belong to source category "X".</code></td><td></td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td><code>No MiVida employee has employee code "X".</code></td><td>Check the employee code</td></tr>
+          <tr><td><code>budget</code></td><td>budget format message</td><td><code>1500000</code> or <code>1500000-1800000</code></td></tr>
+          <tr><td><code>opportunity_id</code></td><td><code>This opportunity was deleted in MiVida …</code></td><td>Contact MiVida</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 12 -->
+    <section id="golive">
+      <h2><span class="num">12</span>Go-live checklist</h2>
+      <ul class="checklist">
+        <li>MiVida provides <code>client_id</code> / <code>client_secret</code> for each environment (staging, production).</li>
+        <li>In4Suite verifies the master data mapping (projects, unit sizes, unit types, source categories and sources, employee codes) against the MiVida Master Data sheet.</li>
+        <li>Dry run of the historical load on staging; review the <code>failed</code> items.</li>
+        <li>In4Suite provides the sync-back URL and token.</li>
+        <li>Production historical load: leads, then opportunities.</li>
+        <li>Switch to live pushes.</li>
+      </ul>
+      <h3>Coming next</h3>
+      <ul>
+        <li><strong>Bookings</strong> (next phase): In4Suite bookings will update MiVida pipeline stages, including for historical records.</li>
+        <li><strong>Activity history</strong> (calls, notes, site visits) is out of scope for this phase.</li>
+      </ul>
+    </section>
+
+    <footer>MiVida Sales Tracker · In4Suite integration v1.0 · October 2026</footer>
+  </main>
+</div>
+
+<script>
+  document.querySelectorAll('.code').forEach(function (block) {
+    var btn = block.querySelector('.copy');
+    var pre = block.querySelector('pre');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange(); range.selectNodeContents(pre);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = 'Selected — press Ctrl/⌘ C';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 2500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+    });
+  });
+</script>
+</body>
+</html>
