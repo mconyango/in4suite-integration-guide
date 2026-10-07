@@ -490,6 +490,8 @@ Content-Type: application/json
       <ul>
         <li><strong>One customer, many opportunities.</strong> A lead may have any number of opportunities. MiVida doesn’t treat them as duplicates.</li>
         <li><strong>Changing <code>project_id</code> without <code>area</code></strong> is rejected if the stored area belongs to the old project. Send the new project’s <code>area</code> with it.</li>
+        <li><strong>Changing <code>source_category</code> without <code>source</code></strong> is rejected if the stored source belongs to the old category. Send a source from the new category, or <code>"source": ""</code> to clear it.</li>
+        <li><strong>A lead deleted in MiVida.</strong> If a MiVida user deletes the lead, In4Suite updates still apply to the opportunity, and the response carries a warning saying so.</li>
         <li><strong>An opportunity deleted in MiVida</strong> can’t be re-created with the same <code>opportunity_id</code> (422). Contact MiVida if this happens.</li>
       </ul>
     </section>
@@ -522,7 +524,7 @@ Content-Type: application/json
 { "items": [ { ...opportunity... }, { ...opportunity... } ] }</pre></div>
       <ul>
         <li>Up to <strong>100 items</strong> per request. More returns <strong>400</strong>.</li>
-        <li>Each item has the same fields as the single endpoint and is <strong>created or updated independently</strong>. A failing item doesn’t affect the others.</li>
+        <li>Each item has the same fields as the single endpoint and is <strong>created or updated independently</strong>. A failing item doesn’t affect the others, even when MiVida hits an internal error on it: that item is reported as <code>failed</code> with an “internal error” message and the rest of the batch still runs.</li>
         <li>The response is <strong>200</strong> whenever the body is well formed. Check each item’s <code>result</code>. <code>index</code> is the item’s position in your <code>items</code> array.</li>
       </ul>
       <div class="code"><div class="code-head"><span>response · 200</span><button class="copy" type="button">Copy</button></div><pre>{
@@ -607,9 +609,11 @@ Content-Type: application/json
           <tr><td><code>area</code></td><td><code>… does not match any MiVida unit size id.</code> / <code>… belongs to a different project …</code></td><td>Check the master data sheet</td></tr>
           <tr><td><code>unit_type</code> / <code>source_category</code> / <code>source</code></td><td><code>… is not a MiVida unit type / source category / source.</code></td><td>Check the master data sheet</td></tr>
           <tr><td><code>source</code></td><td><code>… does not belong to source category "X".</code></td><td></td></tr>
+          <tr><td><code>source</code></td><td><code>source_category changed: the stored source "X" does not belong to "Y" …</code></td><td>Send a source from the new category, or <code>""</code></td></tr>
           <tr><td><code>assigned_agent_id</code></td><td><code>No MiVida employee has employee code "X".</code></td><td>Check the employee code</td></tr>
           <tr><td><code>budget</code></td><td>budget format message</td><td><code>1500000</code> or <code>1500000-1800000</code></td></tr>
           <tr><td><code>opportunity_id</code></td><td><code>This opportunity was deleted in MiVida …</code></td><td>Contact MiVida</td></tr>
+          <tr><td><code>opportunity_id</code> / <code>lead_id</code> (batch)</td><td><code>MiVida could not process this item because of an internal error …</code></td><td>Retry later; contact MiVida if it persists</td></tr>
         </tbody>
       </table></div>
     </section>
