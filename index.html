@@ -181,12 +181,13 @@
       <li><a href="#syncback">Sync-back</a></li>
       <li><a href="#errors">Error messages</a></li>
       <li><a href="#golive">Go-live checklist</a></li>
+      <li><a href="#changes">Changes in 1.1</a></li>
     </ol>
   </nav>
 
   <main>
     <header class="intro">
-      <div class="eyebrow">Integration guide · v1.0 · October 2026</div>
+      <div class="eyebrow">Integration guide · v1.1 · October 2026</div>
       <h1>MiVida ↔ In4Suite Integration API</h1>
       <p class="lede">Everything the In4Suite team needs to push leads and opportunities into MiVida, keep them up to date, and receive changes back.</p>
       <div class="meta">
@@ -252,13 +253,13 @@ curl -X POST https://&lt;mivida-host&gt;/api/in4suite/opportunities \
         "customer_name": "Aisha Rahman",
         "customer_phone": "+971501234567",
         "customer_country_code": "AE",
-        "project_id": "RVH",
+        "project_id": "PRJ-104",
         "area": "0192a1b2-55aa-7b31-8c12-44ab77cd1200",
-        "unit_type": "2br",
+        "unit_type": "2 BHK Type B",
         "budget": "1500000-1800000",
-        "source_category": "digital",
-        "source": "facebook",
-        "assigned_agent_id": "EMP0042",
+        "source_category": "Digital",
+        "source": "Facebook",
+        "assigned_agent_id": "USR-0042",
         "created_at": "2024-03-14T10:25:00+04:00"
       }'</pre></div>
     </section>
@@ -286,7 +287,8 @@ curl -X POST https://&lt;mivida-host&gt;/api/in4suite/opportunities \
       <h2><span class="num">04</span>Conventions</h2>
 
       <h3>Your IDs are the keys</h3>
-      <p>Every record is addressed by <strong>your</strong> ID (<code>lead_id</code>, <code>opportunity_id</code>). You never need to store MiVida’s IDs, though responses include them (<code>mivida_customer_id</code>, <code>mivida_opportunity_id</code>, <code>mivida_lead_id</code>) for support conversations. IDs are strings of up to 64 characters and may contain anything except <code>/</code>.</p>
+      <p>Every record is addressed by <strong>your</strong> ID (<code>lead_id</code>, <code>opportunity_id</code>). You never need to store MiVida’s IDs, though responses include them (<code>mivida_customer_id</code>, <code>mivida_opportunity_id</code>, <code>mivida_lead_id</code>, <code>mivida_project_id</code>) for support conversations. IDs are strings of up to 64 characters and may contain anything except <code>/</code>.</p>
+      <p>Projects and agents are addressed by <strong>your</strong> IDs too: MiVida stores your project id and agent id on its own project and employee records (<a href="#opportunities">fields</a>, <a href="#agents">agent assignment</a>).</p>
 
       <h3>Create-or-update with POST is safe to retry</h3>
       <p><span class="m post">POST</span> creates the record if MiVida doesn’t know the ID yet, and updates it if it does. Re-sending the same payload never creates duplicates, so retrying after a timeout or network error is always safe.</p>
@@ -378,7 +380,7 @@ curl -X POST https://&lt;mivida-host&gt;/api/in4suite/opportunities \
           <tr><td><code>customer_country_code</code></td><td><span class="chip req">required</span></td><td>string</td><td>ISO 3166-1 alpha-2 (<code>AE</code>) is <strong>preferred</strong>. Dial codes (<code>971</code>, <code>+971</code>, <code>00971</code>) are accepted too. Shared dial codes resolve to the main country (<code>1</code> → US, <code>7</code> → RU, <code>44</code> → GB, <code>61</code> → AU), so send ISO2 for the others.</td></tr>
           <tr><td><code>customer_email</code></td><td><span class="chip req">required</span></td><td>email ≤ 128</td><td><strong>Unique across MiVida customers.</strong></td></tr>
           <tr><td><code>created_at</code></td><td><span class="chip req">required</span></td><td>ISO 8601</td><td>Original creation time in In4Suite. Kept as the customer’s creation date.</td></tr>
-          <tr><td><code>salutation</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 30</td><td>e.g. <code>Mr</code>, <code>Ms</code>, <code>Dr</code></td></tr>
+          <tr><td><code>salutation</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span> your In4Suite salutation, e.g. <code>Mr.</code>, <code>M/s.</code>, <code>Bishop</code>. Matched ignoring case, spaces and dots (<code>Dr.</code> = <code>Dr</code>); <code>M/s.</code> and <code>Ms.</code> are distinct. One MiVida doesn’t know is stored as sent, not rejected.</td></tr>
           <tr><td><code>customer_category</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 128</td><td><span class="chip md">master data</span> customer category</td></tr>
           <tr><td><code>customer_location</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 255</td><td>Free text</td></tr>
           <tr><td><code>preferred_contact_method</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 128</td><td><span class="chip md">master data</span> contact method</td></tr>
@@ -423,7 +425,7 @@ Content-Type: application/json
     <section id="opportunities">
       <h2><span class="num">07</span>Opportunities</h2>
       <h3>Fields</h3>
-      <p>Fields marked <span class="chip md">master data</span> take values from the <strong>MiVida Master Data sheet</strong>. The customer’s email isn’t sent with the opportunity; MiVida takes it from the lead.</p>
+      <p>Fields marked <span class="chip md">master data</span> are sent as <strong>your In4Suite names</strong> (e.g. <code>2 BHK Type B</code>, <code>Walk-In</code>). MiVida keeps its lists in sync with In4Suite’s and matches names ignoring case, spaces and separators. <code>area</code> is the exception: a MiVida unit size id from the <strong>MiVida Master Data sheet</strong>. The customer’s email isn’t sent with the opportunity; MiVida takes it from the lead.</p>
       <div class="table-wrap"><table class="fields">
         <thead><tr><th>Field</th><th>To create</th><th>Type / limit</th><th>Notes</th></tr></thead>
         <tbody>
@@ -432,14 +434,14 @@ Content-Type: application/json
           <tr><td><code>customer_name</code></td><td><span class="chip req">required</span></td><td>string ≤ 128</td><td></td></tr>
           <tr><td><code>customer_phone</code></td><td><span class="chip req">required</span></td><td>string ≤ 15</td><td></td></tr>
           <tr><td><code>customer_country_code</code></td><td><span class="chip req">required</span></td><td>string</td><td>Same rules as for leads.</td></tr>
-          <tr><td><code>project_id</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> project code (e.g. <code>RVH</code>). The MiVida project id is accepted too.</td></tr>
-          <tr><td><code>source_category</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> source category value (or label).</td></tr>
-          <tr><td><code>unit_type</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> unit type value, e.g. <code>2br</code> (or the label <code>2 Bedroom</code>).</td></tr>
+          <tr><td><code>project_id</code></td><td><span class="chip req">required</span></td><td>string</td><td><strong>Your In4Suite project id</strong> (e.g. <code>PRJ-104</code>), matched against the In4Suite Project ID set on each MiVida project. MiVida project codes and ids are not accepted.</td></tr>
+          <tr><td><code>source_category</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> your In4Suite source category, e.g. <code>Walk-In</code>. MiVida’s value (<code>walk_in</code>) is accepted too.</td></tr>
+          <tr><td><code>unit_type</code></td><td><span class="chip req">required</span></td><td>string</td><td><span class="chip md">master data</span> your In4Suite unit type, e.g. <code>2 BHK Type B</code>. <code>2BHK</code>, <code>2 BHK</code> and <code>2_bhk</code> are the same type. MiVida’s value (<code>2_bhk_type_b</code>) is accepted too.</td></tr>
           <tr><td><code>created_at</code></td><td><span class="chip req">required</span></td><td>ISO 8601</td><td>Original creation time in In4Suite. Decides whether the record is <a href="#historical">historical</a>.</td></tr>
           <tr><td><code>area</code></td><td><span class="chip opt">optional</span></td><td>string (id)</td><td><span class="chip md">master data</span> MiVida <strong>unit size id</strong>. Must belong to <code>project_id</code>. MiVida fills in the phase, block and unit type from it.</td></tr>
-          <tr><td><code>source</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span> source value or label. Must belong to <code>source_category</code>.</td></tr>
+          <tr><td><code>source</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span> your In4Suite source, e.g. <code>Signages</code>. Must belong to <code>source_category</code>. The same name may exist under several categories; the one under <code>source_category</code> is used.</td></tr>
           <tr><td><code>budget</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 40</td><td>One amount (<code>1500000</code>) or a range (<code>1500000-1800000</code>).</td></tr>
-          <tr><td><code>assigned_agent_id</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><strong>Employee code</strong> of the agent. See <a href="#agents">agent assignment</a>.</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><strong>Your In4Suite id</strong> of the agent. See <a href="#agents">agent assignment</a>.</td></tr>
           <tr><td><code>customer_category</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
           <tr><td><code>customer_location</code></td><td><span class="chip opt">optional</span></td><td>string ≤ 255</td><td>Free text</td></tr>
           <tr><td><code>buying_horizon</code></td><td><span class="chip opt">optional</span></td><td>string</td><td><span class="chip md">master data</span></td></tr>
@@ -450,23 +452,23 @@ Content-Type: application/json
       </table></div>
 
       <h3 id="agents">Agent assignment</h3>
-      <p>Agents are identified by <strong>employee code</strong>, which is the same in both systems.</p>
+      <p>Agents are identified by <strong>your In4Suite id</strong> for them, matched exactly against the In4Suite ID set on each MiVida employee. Employee codes are not accepted.</p>
       <div class="table-wrap"><table>
         <thead><tr><th>Situation</th><th>Outcome</th></tr></thead>
         <tbody>
-          <tr><td>Code matches an employee with a MiVida user account</td><td>Assigned. MiVida creates its lead for that agent.</td></tr>
-          <tr><td>Code matches an employee <strong>without</strong> a user account</td><td>Saved <strong>unassigned</strong>, with your code kept. <code>warnings</code> says so. Status 201/200, not an error. A MiVida admin can assign it once the account exists.</td></tr>
-          <tr><td>Code not found in MiVida</td><td><strong>422</strong> on <code>assigned_agent_id</code></td></tr>
+          <tr><td>Id matches an employee with a MiVida user account</td><td>Assigned. MiVida creates its lead for that agent.</td></tr>
+          <tr><td>Id matches an employee <strong>without</strong> a user account</td><td>Saved <strong>unassigned</strong>, with your id kept. <code>warnings</code> says so. Status 201/200, not an error. A MiVida admin can assign it once the account exists.</td></tr>
+          <tr><td>Id not mapped to any MiVida employee</td><td><strong>422</strong> on <code>assigned_agent_id</code></td></tr>
           <tr><td>Not sent, <strong>live</strong> record</td><td>MiVida assigns automatically, round-robin among the project cluster’s agents</td></tr>
           <tr><td>Not sent, <strong>historical</strong> record</td><td>Left unassigned</td></tr>
-          <tr><td>Update with a different code</td><td>MiVida’s lead is <strong>reassigned</strong>: recorded in its history, and the new agent is notified (not for historical records).</td></tr>
+          <tr><td>Update with a different id</td><td>MiVida’s lead is <strong>reassigned</strong>: recorded in its history, and the new agent is notified (not for historical records).</td></tr>
           <tr><td>Update with an empty value</td><td>Ignored. Agents can’t be removed through the API.</td></tr>
         </tbody>
       </table></div>
       <div class="code"><div class="code-head"><span>response · 201 with a warning</span><button class="copy" type="button">Copy</button></div><pre>{
   "result": "created",
-  "warnings": ["Employee Aq0222 has no MiVida user account; the opportunity is left unassigned. It can be assigned once the account exists."],
-  "data": { "opportunity_id": "OP-004568", "status": "unassigned", "is_agent_assigned": false, "assigned_agent_id": "Aq0222", "...": "..." }
+  "warnings": ["Employee USR-0222 has no MiVida user account; the opportunity is left unassigned. It can be assigned once the account exists."],
+  "data": { "opportunity_id": "OP-004568", "status": "unassigned", "is_agent_assigned": false, "assigned_agent_id": "USR-0222", "...": "..." }
 }</pre></div>
 
       <h3>Response fields</h3>
@@ -479,9 +481,9 @@ Content-Type: application/json
           <tr><td><code>status</code></td><td><code>unassigned</code> or <code>assigned</code></td></tr>
           <tr><td><code>lead_status</code></td><td>Stage in MiVida’s sales pipeline (e.g. <code>opportunity</code>, <code>site_visited</code>, <code>booked</code>, <code>sold</code>); <code>null</code> while unassigned</td></tr>
           <tr><td><code>is_historical</code></td><td>Whether MiVida archived it on arrival</td></tr>
-          <tr><td><code>assigned_agent_id</code></td><td>Employee code of the current agent, or the code you sent if that employee has no MiVida account</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td>Your In4Suite id of the current agent. If that agent has no MiVida account, or MiVida reassigned it to someone not mapped to In4Suite, the last id you sent (<code>null</code> if you never sent one).</td></tr>
           <tr><td><code>is_agent_assigned</code></td><td>Whether a MiVida agent actually holds it</td></tr>
-          <tr><td><code>project_id</code>, <code>project_code</code>, <code>area</code></td><td>MiVida project id, project code and unit size id</td></tr>
+          <tr><td><code>project_id</code>, <code>mivida_project_id</code>, <code>project_code</code>, <code>area</code></td><td>Your In4Suite project id (as you send it), MiVida’s project id, MiVida’s project code and the unit size id</td></tr>
           <tr><td>other fields</td><td>As sent, after normalization</td></tr>
         </tbody>
       </table></div>
@@ -578,7 +580,7 @@ Content-Type: application/json
       <div class="table-wrap"><table>
         <thead><tr><th>event</th><th>Sent when</th><th>data</th></tr></thead>
         <tbody>
-          <tr><td><code>opportunity.assigned</code></td><td>A MiVida user assigns or reassigns the opportunity’s agent</td><td><code>opportunity_id</code>, <code>assigned_agent_id</code> (employee code), <code>assigned_at</code></td></tr>
+          <tr><td><code>opportunity.assigned</code></td><td>A MiVida user assigns or reassigns the opportunity’s agent</td><td><code>opportunity_id</code>, <code>assigned_agent_id</code> (your In4Suite id of the agent; <code>null</code> when the opportunity was unassigned; <strong>omitted</strong> when the agent isn’t mapped to In4Suite, so keep your current value), <code>assigned_at</code></td></tr>
           <tr><td><code>opportunity.status_changed</code></td><td>The MiVida lead moves along the pipeline</td><td><code>opportunity_id</code>, <code>status</code>, <code>status_label</code>, <code>status_remarks</code>, <code>status_updated_at</code></td></tr>
           <tr><td><code>lead.updated</code></td><td>A MiVida user changes the customer’s contact details</td><td><code>lead_id</code> plus only the changed fields among <code>customer_name</code>, <code>customer_phone</code>, <code>customer_email</code>, <code>customer_country_code</code></td></tr>
         </tbody>
@@ -605,12 +607,12 @@ Content-Type: application/json
           <tr><td><code>created_at</code></td><td><code>… must be an ISO 8601 date-time …</code> / <code>… cannot be in the future.</code></td><td></td></tr>
           <tr><td><code>lead_id</code></td><td><code>In4Suite lead "X" has not been pushed to MiVida yet …</code></td><td>Push the lead, then retry</td></tr>
           <tr><td><code>lead_id</code></td><td><code>An opportunity cannot be moved to another lead …</code></td><td>Not supported</td></tr>
-          <tr><td><code>project_id</code></td><td><code>… does not match any MiVida project id or code.</code></td><td>Check the master data sheet</td></tr>
+          <tr><td><code>project_id</code></td><td><code>… is not mapped to any MiVida project (In4Suite Project ID).</code></td><td>Ask MiVida to set the In4Suite Project ID on the project</td></tr>
           <tr><td><code>area</code></td><td><code>… does not match any MiVida unit size id.</code> / <code>… belongs to a different project …</code></td><td>Check the master data sheet</td></tr>
           <tr><td><code>unit_type</code> / <code>source_category</code> / <code>source</code></td><td><code>… is not a MiVida unit type / source category / source.</code></td><td>Check the master data sheet</td></tr>
           <tr><td><code>source</code></td><td><code>… does not belong to source category "X".</code></td><td></td></tr>
           <tr><td><code>source</code></td><td><code>source_category changed: the stored source "X" does not belong to "Y" …</code></td><td>Send a source from the new category, or <code>""</code></td></tr>
-          <tr><td><code>assigned_agent_id</code></td><td><code>No MiVida employee has employee code "X".</code></td><td>Check the employee code</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td><code>No MiVida employee is mapped to In4Suite id "X".</code></td><td>Ask MiVida to set the In4Suite ID on the employee</td></tr>
           <tr><td><code>budget</code></td><td>budget format message</td><td><code>1500000</code> or <code>1500000-1800000</code></td></tr>
           <tr><td><code>opportunity_id</code></td><td><code>This opportunity was deleted in MiVida …</code></td><td>Contact MiVida</td></tr>
           <tr><td><code>opportunity_id</code> / <code>lead_id</code> (batch)</td><td><code>MiVida could not process this item because of an internal error …</code></td><td>Retry later; contact MiVida if it persists</td></tr>
@@ -623,7 +625,9 @@ Content-Type: application/json
       <h2><span class="num">12</span>Go-live checklist</h2>
       <ul class="checklist">
         <li>MiVida provides <code>client_id</code> / <code>client_secret</code> for each environment (staging, production).</li>
-        <li>In4Suite verifies the master data mapping (projects, unit sizes, unit types, source categories and sources, employee codes) against the MiVida Master Data sheet.</li>
+        <li>MiVida sets the In4Suite Project ID on every project In4Suite will send opportunities for.</li>
+        <li>MiVida sets the In4Suite ID on every employee In4Suite assigns opportunities to.</li>
+        <li>In4Suite verifies the master data mapping (unit sizes, unit types, source categories and sources) against the MiVida Master Data sheet.</li>
         <li>Dry run of the historical load on staging; review the <code>failed</code> items.</li>
         <li>In4Suite provides the sync-back URL and token.</li>
         <li>Production historical load: leads, then opportunities.</li>
@@ -636,7 +640,24 @@ Content-Type: application/json
       </ul>
     </section>
 
-    <footer>MiVida Sales Tracker · In4Suite integration v1.0 · October 2026</footer>
+    <!-- 13 -->
+    <section id="changes">
+      <h2><span class="num">13</span>Changes in 1.1</h2>
+      <p>What changed since version 1.0. The first three rows change what you send or receive.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Area</th><th>1.0</th><th>1.1</th></tr></thead>
+        <tbody>
+          <tr><td><code>project_id</code> (request)</td><td>MiVida project code or id</td><td><strong>Your In4Suite project id</strong>, mapped on the MiVida project. Codes and MiVida ids are no longer accepted.</td></tr>
+          <tr><td><code>project_id</code> (response)</td><td>MiVida project id</td><td><strong>Your In4Suite project id</strong>, as you send it. MiVida’s id moves to <code>mivida_project_id</code>.</td></tr>
+          <tr><td><code>assigned_agent_id</code></td><td>Employee code</td><td><strong>Your In4Suite agent id</strong>, mapped on the MiVida employee. Employee codes are no longer accepted. Also used in responses and in <code>opportunity.assigned</code>.</td></tr>
+          <tr><td><code>opportunity.assigned</code></td><td><code>assigned_agent_id</code> always present</td><td>Omitted when MiVida’s agent isn’t mapped to In4Suite; <code>null</code> only when the opportunity was unassigned.</td></tr>
+          <tr><td><code>unit_type</code>, <code>source_category</code>, <code>source</code></td><td>MiVida value or label, case-insensitive</td><td>Your In4Suite names, ignoring case, spaces and separators. MiVida’s lists now include In4Suite’s. The same <code>source</code> may exist under several categories.</td></tr>
+          <tr><td><code>salutation</code></td><td>Stored as sent</td><td>Your In4Suite salutation, matched to MiVida’s (<code>Dr.</code> → <code>Dr</code>). Unknown ones are still stored as sent.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer>MiVida Sales Tracker · In4Suite integration v1.1 · October 2026</footer>
   </main>
 </div>
 
